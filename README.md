@@ -27,7 +27,7 @@ flowchart TD
     F["🧑‍⚖️ <b>Expert marking</b><br/>The best AI available, marking like a head chef.<br/><i>Is it actually good food? ✓<br/>Is “30 minutes” really 30 minutes? ✗</i>"]
 
     G["📊 <b>A scorecard</b><br/>For each AI: how many tests it passed,<br/>its average mark, what it cost, how long it took"]
-    H["✅ <b>A decision backed by evidence</b><br/><i>Real example: the premium model scored 0.91<br/>against 0.86, so the app switched to it for recipes</i>"]
+    H["✅ <b>A decision backed by evidence</b><br/><i>Real example: the premium model<br/>scored 0.91 against 0.86, so the app<br/>switched to it for writing recipes</i>"]
 
     A --> C
     B --> C
