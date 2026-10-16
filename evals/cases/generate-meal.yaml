@@ -1,0 +1,27 @@
+# Five requests, each probing something different. Kept few on purpose: the arms multiply, so a
+# sixth request is four more calls and about a dollar.
+#
+# None of these override servings or the time budget. That is a known gap, not an oversight: a
+# one-off override ("cooking for 5 tonight") would make `servings_match` fail for a recipe that
+# correctly followed the request, because the grader compares against the profile. Supporting it
+# means letting a case carry profile overrides, which is the obvious next extension.
+
+- description: baseline, with the equipment constraint that matters most
+  vars:
+    request: Something with chicken and a green veg, quick, no oven.
+
+- description: time pressure, leaning on what is in the pantry
+  vars:
+    request: I have twenty minutes and I am starving. Use what I already have.
+
+- description: a diet rule plus an ingredient the pantry says is out
+  vars:
+    request: Something vegetarian and properly filling. No eggs, I am out of them.
+
+- description: cuisine and heat, where spice level should come from the card
+  vars:
+    request: I fancy something Indian with a bit of heat tonight.
+
+- description: pantry-led, and the one most likely to need acid
+  vars:
+    request: I want to use up the chickpeas and I fancy something fresh.

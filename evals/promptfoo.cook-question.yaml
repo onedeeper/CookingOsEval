@@ -1,0 +1,43 @@
+# The cook-question sweep: one question, three arms.
+#
+# The question this answers: can a cheaper model handle mid-cook questions? It is a different job
+# from generation — a tool-calling loop over a recipe that already exists — and the failure modes
+# are structural (no patch when one was needed, a patch that does not validate, a patch that
+# matches nothing) as much as they are about tone.
+#
+# Sonnet 5.5 at `low` is what ships today and is the first arm. Haiku 4.5 takes neither effort nor
+# adaptive thinking, and the provider omits both for it rather than erroring.
+description: CookingOS — mid-cook questions on a cheap model versus the shipped one
+
+prompts:
+  - '{{question}}'
+
+# Providers use promptfoo's nested form (`- file://...: {label, config}`) rather than
+# `- id: file://...`. That is not cosmetic: with the flat `id:` form, `--filter-providers` matches
+# nothing for a file:// provider, so there is no way to re-run a single arm. Verified against
+# promptfoo 0.120.19 — if you upgrade, re-check it before changing this back.
+providers:
+  - file://./providers/cook-question.ts:
+      label: sonnet-5-5/low (shipped)
+      config:
+        model: claude-sonnet-5-5
+        effort: low
+
+  - file://./providers/cook-question.ts:
+      label: haiku-5-5/low
+      config:
+        model: claude-haiku-5-5
+        effort: low
+
+  - file://./providers/cook-question.ts:
+      label: haiku-4-5
+      config:
+        model: claude-haiku-4-5
+        effort: low
+
+defaultTest:
+  assert:
+    - type: javascript
+      value: file://./asserts/cook.ts
+
+tests: file://./cases/cook-question.yaml

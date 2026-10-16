@@ -1,0 +1,29 @@
+{
+  "name": "cookingos-evals",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The evaluation harness for CookingOS: scores an AI chef's recipes and answers, and compares models on quality and cost.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.14"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "eval": "npm run eval:meal && npm run eval:cook",
+    "eval:meal": "PROMPTFOO_DISABLE_TELEMETRY=1 node --experimental-transform-types --disable-warning=ExperimentalWarning node_modules/promptfoo/dist/src/entrypoint.js eval -c evals/promptfoo.generate-meal.yaml",
+    "eval:cook": "PROMPTFOO_DISABLE_TELEMETRY=1 node --experimental-transform-types --disable-warning=ExperimentalWarning node_modules/promptfoo/dist/src/entrypoint.js eval -c evals/promptfoo.cook-question.yaml",
+    "eval:view": "PROMPTFOO_DISABLE_TELEMETRY=1 node --experimental-transform-types --disable-warning=ExperimentalWarning node_modules/promptfoo/dist/src/entrypoint.js view"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.131.0",
+    "promptfoo": "0.120.19",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "2.117.2",
+    "@types/node": "22.15.3",
+    "typescript": "6.0.3",
+    "vitest": "3.2.4"
+  }
+}

@@ -1,0 +1,5 @@
+node_modules/
+.env
+.promptfoo/
+*.log
+.DS_Store

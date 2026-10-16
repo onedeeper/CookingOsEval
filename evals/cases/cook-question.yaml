@@ -1,0 +1,78 @@
+# Nine questions against the fixed recipe in fixtures/recipes.ts: six asked mid-cook (the default,
+# locked) and three asked in review (`status: generated`).
+#
+# `expect_patch` and `expect_pantry` are declared here rather than inferred from what the model
+# did — inferring them would make the metric unfalsifiable, because whatever the model chose would
+# then look correct. Three questions need the recipe changed and three do not, so an arm that
+# patches everything and an arm that patches nothing both score badly.
+
+- description: a substitution the pantry can actually support
+  vars:
+    question: Can I swap the rice for something higher in protein?
+    expect_patch: true
+    expect_pantry: false
+
+- description: a question about technique, which must not touch the recipe
+  vars:
+    question: Why am I salting the chicken now instead of at the end?
+    expect_patch: false
+    expect_pantry: false
+
+- description: ran out mid-cook — needs both a patch and a pantry write
+  vars:
+    question: I have just realised I am out of soy sauce. What do I do?
+    expect_patch: true
+    expect_pantry: true
+
+- description: a doneness cue, answered in words
+  vars:
+    question: How do I know when the beans are actually done?
+    expect_patch: false
+    expect_pantry: false
+
+- description: a change to the dish itself
+  vars:
+    question: Make it less spicy, my kid is eating this too.
+    expect_patch: true
+    expect_pantry: false
+
+- description: a constraint that should change the method, not the shopping list
+  vars:
+    question: I have only got two hobs working tonight.
+    expect_patch: false
+    expect_pantry: false
+
+# --- Asked in review: nothing bought yet, so `patch_recipe` is withheld and a change is a rethink.
+#
+# Added after a cook reported (2026-10-13) that "They seem to be out of sweet paprika powder. Can we
+# do something else instead?" got a pantry write and "skip it, or use tomato purée" and no rethink.
+# Until then every case ran locked, so the review state had no coverage. The ingredient here is
+# lemon, not paprika, only because lemon is in the fixture recipe. It is deliberately a MINOR
+# ingredient: John judged the paprika "not something the dish leans on" and declined to rethink, so
+# a major one (soy sauce, the chicken) would not have reproduced the failure.
+
+- description: review — a shop is out of a minor ingredient and the cook asks for something else
+  vars:
+    status: generated
+    question: They seem to be out of lemons. Can we do something else instead?
+    expect_patch: false
+    # "They" is the shop. Marking lemon out in the cook's pantry on that would be a guess about
+    # their cupboard, so a pantry write here is a defect, not a bonus.
+    expect_pantry: false
+    expect_rethink: true
+
+- description: review — a different phrasing of the same request, for a different ingredient
+  vars:
+    status: generated
+    question: I can't get hold of red chilli anywhere near me. Can you change the dish?
+    expect_patch: false
+    expect_pantry: false
+    expect_rethink: true
+
+- description: review — a plain question, which must not become a rebuild
+  vars:
+    status: generated
+    question: Roughly how long will the whole meal take me?
+    expect_patch: false
+    expect_pantry: false
+    expect_rethink: false
