@@ -18,24 +18,21 @@ Without a test bench, those decisions are guesses. With one, each is a table of 
 
 ```mermaid
 flowchart TD
-    A["📋 <b>Test cases</b><br/>Realistic requests and questions,<br/>each with what a good answer must do"]
-    B["🤖 <b>Contestants</b><br/>Different AI models and settings<br/><i>e.g. a premium model vs. a cheaper one</i>"]
+    A["📝 <b>A list of test requests</b><br/><i>“Something quick with chicken, no oven”</i><br/><i>“Something vegetarian, I'm out of eggs”</i>"]
+    B["🤖 <b>A few AI models to compare</b><br/><i>an expensive one, a cheaper one…</i>"]
 
-    C["⚙️ <b>Run the real app code</b><br/>Every contestant gets every test case,<br/>through the same code the app ships"]
+    C["👨‍🍳 <b>Every AI cooks up an answer to every request</b><br/>using exactly the same instructions the real app uses"]
 
-    D["🍽️ <b>The answer</b><br/>A full recipe, or John's reply,<br/>plus what it cost and how long it took"]
+    E["📏 <b>Checklist marking</b><br/>Simple yes/no checks. Free, instant, always consistent.<br/><i>Needs an oven the cook doesn't have? ✗<br/>Buys an ingredient it never uses? ✗<br/>Do the cooking times add up? ✓</i>"]
+    F["🧑‍⚖️ <b>Expert marking</b><br/>The best AI available, marking like a head chef.<br/><i>Is it actually good food? ✓<br/>Is “30 minutes” really 30 minutes? ✗</i>"]
 
-    E["📏 <b>Rule checker</b><br/>Free, instant, never changes its mind<br/><i>Is every ingredient bought actually used?<br/>Does it need an oven the cook doesn't have?<br/>Do the timings add up?</i>"]
-    F["🧑‍⚖️ <b>AI judge</b><br/>A top-tier model grading like a chef would<br/><i>Is this good food? Is 30 minutes honest?<br/>Would a real cook be able to follow it?</i>"]
-
-    G["📊 <b>Scorecard</b><br/>One row per test case, one column per contestant:<br/>pass or fail, a score, the cost, the wait"]
-    H["✅ <b>A decision with evidence behind it</b><br/>Change one line of settings in the app"]
+    G["📊 <b>A scorecard</b><br/>For each AI: how many tests it passed,<br/>its average mark, what it cost, how long it took"]
+    H["✅ <b>A decision backed by evidence</b><br/><i>Real example: the premium model scored 0.91<br/>against 0.86, so the app switched to it for recipes</i>"]
 
     A --> C
     B --> C
-    C --> D
-    D --> E
-    D --> F
+    C --> E
+    C --> F
     E --> G
     F --> G
     G --> H
@@ -45,16 +42,17 @@ flowchart TD
     classDef grade fill:#fde8e8,stroke:#b03a3a,color:#1a1a1a
     classDef output fill:#e6f4ea,stroke:#3a7d4a,color:#1a1a1a
     class A,B input
-    class C,D step
+    class C step
     class E,F grade
     class G,H output
 ```
 
-**In words:** pick a set of realistic test cases. Pick the AI models you want to compare. Every
-model gets every case, through the app's real code. Each answer is graded twice: by a strict
-rule checker and by an AI judge. All of it lands on one scorecard, which drives the decision.
+**In words:** write down realistic requests. Pick the AI models you want to compare. Every
+model answers every request, using the app's real instructions. Each answer is marked twice:
+once against a checklist and once by an expert AI judge. Everything lands on one scorecard, and
+the scorecard drives the decision.
 
-A more detailed, step-by-step set of diagrams is in [`evals/DIAGRAM.md`](evals/DIAGRAM.md).
+Step-by-step diagrams of a single test are in [`evals/DIAGRAM.md`](evals/DIAGRAM.md).
 
 ---
 
@@ -87,7 +85,7 @@ action the right answer requires, so the grader is not tempted to accept whateve
 
 Every answer gets two kinds of marking, because each catches what the other misses.
 
-**The rule checker** (free and instant, and it gives the same verdict every time) catches mistakes
+**Checklist marking** (the rule checker: free, instant, and it gives the same verdict every time) catches mistakes
 a computer can spot with certainty:
 
 - An ingredient on the shopping list that the method never uses
@@ -96,7 +94,7 @@ a computer can spot with certainty:
 - A recipe that needs an oven, or any appliance, the cook said they don't own
 - A reply that should have changed the recipe but didn't, or tried a change that isn't valid
 
-**The AI judge** catches what only judgement can see. Is this actually good food? Does the one
+**Expert marking** (the AI judge) catches what only judgement can see. Is this actually good food? Does the one
 cooking technique it teaches really teach anything? Is "30 minutes" honest? In the first real
 run, the judge caught a recipe that claimed 30 minutes but really took 40: the rice could not
 start until after a 15-minute salting rest. No rule checker would have spotted that.

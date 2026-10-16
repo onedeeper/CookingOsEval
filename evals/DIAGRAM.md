@@ -1,92 +1,105 @@
-# How the eval harness works, from inputs to outputs
+# How the test bench works, step by step
 
-Four diagrams, from the big picture down to how one cell is scored. They render on GitHub and in
-VS Code's Markdown preview (Mermaid). The prose in `README.md` explains *why*; these show *what
-flows where*.
+Four pictures, from the big picture down to how one test gets its final mark. Each is written to
+be followed without any programming background. Under each one, a collapsed **For developers**
+table says where each step lives in the code.
+
+**Colour key, used in every diagram:**
+🟦 blue = what goes in · 🟧 amber = a step the test bench does itself ·
+🟥 red = a call to an AI model, which costs money · 🟩 green = what comes out
 
 ---
 
 ## 1. The big picture
 
-What goes in, what promptfoo does with it, and what comes out.
+There are two kinds of test, because John, the app's AI chef, does two different jobs. One is
+**writing a meal** from a one-line request. The other is **answering questions while you cook**.
+Each AI being compared answers every test, and every answer is marked.
 
 ```mermaid
 flowchart LR
-    subgraph IN["INPUTS"]
+    subgraph IN["WHAT GOES IN"]
         direction TB
-        CMD["npm run eval / eval:meal / eval:cook<br/><i>optional: --filter-providers,<br/>--filter-pattern, --repeat 3</i>"]
-        CFG["promptfoo.*.yaml<br/><b>the arms</b>: model + effort"]
-        CASES["cases/*.yaml<br/><b>the cases</b>: a request or a question,<br/>plus what a good answer must do"]
-        FIX["fixtures/<br/>kitchen.ts: one fixed cook — no oven, 3 hobs<br/>recipes.ts: one fixed recipe to ask about"]
-        SHARED["app/_shared<br/><b>the shipped code</b>: prompt, schemas,<br/>tools, price table"]
-        KEY["EVAL_ANTHROPIC_API_KEY<br/>from .env<br/><i>the harness's own key — never the app's,<br/>and no fallback to ANTHROPIC_API_KEY</i>"]
+        T1["📝 <b>5 meal requests</b><br/><i>“Something quick, no oven”</i>"]
+        T2["❓ <b>9 mid-cook questions</b><br/><i>“I'm out of soy sauce, what now?”</i>"]
+        AI["🤖 <b>The AI models to compare</b><br/>4 for meals, 3 for questions"]
+        COOK["🏠 <b>One imaginary cook</b><br/>no oven, 3 hobs, a stocked cupboard,<br/>always the same, so it's a fair test"]
     end
 
-    GRID["promptfoo builds the grid<br/><b>every case × every arm = one cell</b><br/>generation: 5 × 4 = 20<br/>cook questions: 9 × 3 = 27"]
+    GRID["🔁 <b>Every AI answers every test</b><br/>meals: 5 × 4 = 20 answers<br/>questions: 9 × 3 = 27 answers"]
 
-    subgraph CELL["FOR EACH CELL"]
+    subgraph EACH["FOR EACH ANSWER"]
         direction TB
-        PROV["Provider<br/>runs the real production path<br/>with this arm's model + effort"]
-        API[("Anthropic API<br/>the arm's model")]
-        ASSERT["Assert<br/>scores the output"]
-        JUDGE[("Anthropic API<br/>Opus 5.5 judge, xhigh")]
-        PROV <--> API
-        PROV -- "output + cost + timings" --> ASSERT
-        ASSERT <--> JUDGE
+        ASK["👨‍🍳 Ask the AI being tested"]
+        MARK["📏 Mark it against the checklist"]
+        JUDGE["🧑‍⚖️ Ask the expert AI judge"]
+        ASK --> MARK
+        ASK --> JUDGE
     end
 
-    subgraph OUT["OUTPUTS"]
+    subgraph OUT["WHAT COMES OUT"]
         direction TB
-        ROW["Per cell: pass/fail, score 0–1,<br/>one column per metric,<br/>arm cost, ttft, duration, reason"]
-        DASH["npm run eval:view<br/>dashboard grid: rows = cases,<br/>columns = arms"]
-        DECIDE["A decision with numbers behind it:<br/>change one line in TASK_MODELS / TASK_EFFORT"]
-        ROW --> DASH --> DECIDE
+        CARD["📊 <b>A scorecard</b><br/>rows = tests, columns = AIs<br/>pass or fail, mark out of 1,<br/>cost, waiting time"]
+        DECIDE["✅ <b>A decision</b><br/>which AI the app should use"]
+        CARD --> DECIDE
     end
 
-    CMD --> GRID
-    CFG --> GRID
-    CASES --> GRID
-    GRID --> PROV
-    FIX --> PROV
-    SHARED --> PROV
-    KEY --> PROV
-    ASSERT --> ROW
+    T1 --> GRID
+    T2 --> GRID
+    AI --> GRID
+    COOK --> EACH
+    GRID --> EACH
+    EACH --> CARD
 
     classDef input fill:#e8f0fe,stroke:#4a6fa5,color:#1a1a1a
     classDef step fill:#fff4e0,stroke:#b07a1f,color:#1a1a1a
     classDef paid fill:#fde8e8,stroke:#b03a3a,color:#1a1a1a
     classDef output fill:#e6f4ea,stroke:#3a7d4a,color:#1a1a1a
-    class CMD,CFG,CASES,FIX,SHARED,KEY input
-    class GRID,PROV,ASSERT step
-    class API,JUDGE paid
-    class ROW,DASH,DECIDE output
+    class T1,T2,AI,COOK input
+    class GRID,MARK step
+    class ASK,JUDGE paid
+    class CARD,DECIDE output
 ```
 
-**Key:** blue = inputs · amber = the harness's own steps · red = a paid API call · green = outputs.
+Each answer costs two AI calls: one for the AI being tested and one for the judge. All 47 answers
+together cost about $6.50.
 
-Two paid calls per cell: the arm being tested (what the cost column shows) and the judge (measurement
-overhead, about $0.14 a cell, shown in the cell's reason). A full run is about $6.50.
+<details>
+<summary><b>For developers</b></summary>
+
+| Step | Where it lives |
+| --- | --- |
+| Meal requests, mid-cook questions | `cases/generate-meal.yaml`, `cases/cook-question.yaml` |
+| AIs to compare (model + effort) | the `providers:` list in `promptfoo.*.yaml` |
+| The imaginary cook, the recipe asked about | `fixtures/kitchen.ts`, `fixtures/recipes.ts` |
+| Every AI × every test | promptfoo builds the grid; `npm run eval:meal` / `eval:cook` |
+| Ask the AI being tested | `providers/generate-meal.ts`, `providers/cook-question.ts` |
+| Checklist and judge | `graders/`, combined in `asserts/` |
+| Scorecard | `npm run eval:view` |
+| The key it spends from | `EVAL_ANTHROPIC_API_KEY` in `.env`, never the app's key |
+
+</details>
 
 ---
 
-## 2. Inside one generation cell
+## 2. One meal test, from request to marks
 
-`providers/generate-meal.ts` → `asserts/meal.ts`. Input: one line a cook might type. Output: a
-recipe and its scores.
+What happens when one AI gets one request, such as *"Something with chicken and a green veg, quick,
+no oven."*
 
 ```mermaid
 flowchart TD
-    REQ["Case: the cook's request<br/><i>e.g. 'something quick with what I have'</i>"]
-    KIT["fixtures/kitchen.ts<br/>profile, pantry, gear"]
-    BUILD["Build the prompt exactly as production does<br/>buildSystemBlocks + buildRequestPrompt"]
-    CALL[("messages.stream()<br/>arm's model + effort<br/>output must match ModelRecipeSchema")]
-    TIME["Measure as it streams:<br/>time to first token, total time"]
-    OK{"Valid recipe<br/>came back?"}
-    FAIL["Failed cell: score 0<br/><i>still reports what it cost</i>"]
-    RECIPE["Recipe JSON<br/>+ cost, tokens, ttft, meal_shape_ok"]
-    DET["Deterministic checks — free, no variance<br/>meal_shape · roles_resolve · ingredients_used<br/>prep_covered · timings_add_up · within_time_budget<br/>servings_match · one_skill_node · cues_present<br/>dutch_names · equipment_respected · equipment_listed"]
-    JDG[("Judge: Opus 5.5 at xhigh<br/>MEAL_RUBRIC<br/>cookable · teaches · fidelity<br/>buyable · timing_realistic")]
-    MERGE["Combine into one cell result<br/>see diagram 4"]
+    REQ["📝 <b>The request</b><br/><i>“Something with chicken and a green veg,<br/>quick, no oven.”</i>"]
+    KIT["🏠 <b>The imaginary cook</b><br/>their kitchen, cupboard and tastes"]
+    BUILD["📋 <b>Put together John's instructions</b><br/>exactly the way the real app does"]
+    CALL["🤖 <b>The AI writes a three-dish meal</b><br/>in a fixed recipe format"]
+    TIME["⏱️ <b>Stopwatch running</b><br/>how long until it starts answering,<br/>how long until it finishes"]
+    OK{"Did a complete,<br/>readable recipe<br/>come back?"}
+    FAIL["❌ <b>Test failed, mark 0</b><br/>the cost is still recorded"]
+    RECIPE["🍽️ <b>The recipe</b><br/>plus its cost and timings"]
+    DET["📏 <b>Checklist: 12 yes/no checks</b><br/>Right dishes for this cook? · Every ingredient used?<br/>Everything prepped was bought? · Timings add up?<br/>Fits the time limit? · Right number of servings?<br/>Teaches exactly one technique? · Salt and heat tips?<br/>Dutch names given? · No oven or missing gadget?<br/>Equipment list complete?"]
+    JDG["🧑‍⚖️ <b>Expert judge: 5 questions</b><br/>Could a home cook follow it?<br/>Does the technique really teach something?<br/>Is it what was asked for?<br/>Can it all be bought at the supermarket?<br/>Is the time it claims honest?"]
+    MERGE["📊 <b>Combined into one mark</b><br/>see picture 4"]
 
     REQ --> BUILD
     KIT --> BUILD
@@ -108,42 +121,58 @@ flowchart TD
     class RECIPE,MERGE,FAIL output
 ```
 
-Nothing is saved and nothing is streamed to a phone. Otherwise this is the `generate-meal`
-handler's path, imported from `_shared`, so the eval cannot drift from what ships.
+This is the same path the real app takes, except that nothing is saved and nothing is sent to a
+phone. Because the test bench uses the app's own code rather than a copy, it can't drift from what
+cooks actually get.
+
+<details>
+<summary><b>For developers</b></summary>
+
+| Step | Where it lives |
+| --- | --- |
+| John's instructions | `buildSystemBlocks` + `buildRequestPrompt` in `app/_shared/prompt/john.ts` |
+| The fixed recipe format | `ModelRecipeSchema` in `app/_shared/domain/recipe.ts` (structured output) |
+| The call and the stopwatch | `messages.stream()` in `providers/generate-meal.ts`: time to first token, total duration |
+| The 12 checks | `meal_shape`, `roles_resolve`, `ingredients_used`, `prep_covered`, `timings_add_up`, `within_time_budget`, `servings_match`, `one_skill_node`, `cues_present`, `dutch_names`, `equipment_respected`, `equipment_listed`, in `app/_shared/domain/recipe-coherence.ts` via `graders/recipe-coherence.ts` |
+| The 5 judge questions | `MEAL_RUBRIC` in `graders/judge.ts`: `cookable`, `teaches`, `fidelity`, `buyable`, `timing_realistic` (Opus 5.5 at `xhigh`) |
+
+</details>
 
 ---
 
-## 3. Inside one cook-question cell
+## 3. One mid-cook question, from question to marks
 
-`providers/cook-question.ts` → `asserts/cook.ts`. Input: a question asked from John's bottom sheet,
-about a recipe that already exists. Output: John's answer, every tool call he tried, and scores.
+Here John already has a recipe in front of him, and the cook asks something. Some questions only
+need words. Others need John to **do** something: change the recipe, note that the cook has run
+out of something, or (before cooking has started) offer to rethink the whole meal. Each test says
+in advance what the right reply has to do.
 
 ```mermaid
 flowchart TD
-    Q["Case: the cook's question<br/>+ status: locked (mid-cook) or generated (review)<br/>+ expect_patch / expect_pantry / expect_rethink"]
-    REC["fixtures/recipes.ts<br/>the fixed recipe being cooked"]
-    KIT["fixtures/kitchen.ts"]
-    BUILD["Build the prompt as production does<br/>buildCookQuestionPrompt<br/>tools = cookToolsFor(status)"]
-    CALL[("messages.create()<br/>arm's model, tool_choice: auto")]
-    TOOLS{"Did John<br/>call a tool?"}
-    RUN["Record the attempt FIRST, then run it in memory<br/>patch_recipe → validate, apply to recipe<br/>update_pantry → validate only<br/>suggest_rethink → validate only<br/><i>no database is touched</i>"]
-    LIMIT{"Fewer than<br/>4 turns used?"}
-    OUTCOME["Cook outcome:<br/>answer text, patches, pantry updates,<br/>rethinks, lines changed, turns used<br/>+ cost summed over every turn"]
-    DET["Deterministic checks vs. the case's expectations<br/>answered · patched_when_needed · patch_valid<br/>patch_applied · rethink_when_needed<br/>pantry_when_told · no_restating · turn_efficiency"]
-    JDG[("Judge: Opus 5.5 at xhigh<br/>COOK_RUBRIC<br/>answers_it · correct · spoken")]
-    MERGE["Combine into one cell result<br/>see diagram 4"]
+    Q["❓ <b>The question</b><br/><i>“I'm out of soy sauce, what now?”</i><br/>plus what a right answer must do,<br/>e.g. “must change the recipe”"]
+    STAGE["📍 <b>When it's asked</b><br/>mid-cook: John may edit the recipe<br/>before cooking: John may only<br/>suggest rethinking the meal"]
+    REC["🍽️ <b>The recipe being cooked</b><br/>the same one for every test"]
+    BUILD["📋 <b>Put together John's instructions</b><br/>and the actions he's allowed at this stage"]
+    CALL["🤖 <b>The AI replies as John</b>"]
+    ACT{"Did John try<br/>to take an action?"}
+    RUN["✏️ <b>Note the attempt, then try it</b><br/>edit the recipe · update the cupboard ·<br/>suggest a rethink<br/><i>on a practice copy: nothing real changes</i>"]
+    LIMIT{"Used fewer than<br/>4 rounds?"}
+    OUTCOME["💬 <b>The outcome</b><br/>John's reply, every action he tried,<br/>which recipe lines changed,<br/>the total cost"]
+    DET["📏 <b>Checklist: 8 yes/no checks</b><br/>Did he answer? · Edited the recipe when he should?<br/>Was the edit valid? · Did it actually change something?<br/>Suggested a rethink when he should?<br/>Updated the cupboard when told?<br/>Short, without reading the method back?<br/>Didn't use up all his rounds?"]
+    JDG["🧑‍⚖️ <b>Expert judge: 3 questions</b><br/>Does it answer what was asked?<br/>Is the cooking advice right?<br/>Does it sound like something said out loud<br/>to someone with their hands full?"]
+    MERGE["📊 <b>Combined into one mark</b><br/>see picture 4"]
 
     Q --> BUILD
+    STAGE --> BUILD
     REC --> BUILD
-    KIT --> BUILD
-    BUILD --> CALL --> TOOLS
-    TOOLS -- yes --> RUN --> LIMIT
-    LIMIT -- "yes: send tool results back" --> CALL
-    LIMIT -- no --> OUTCOME
-    TOOLS -- "no: final answer" --> OUTCOME
+    BUILD --> CALL --> ACT
+    ACT -- yes --> RUN --> LIMIT
+    LIMIT -- "yes: tell John how it went" --> CALL
+    LIMIT -- "no: stop" --> OUTCOME
+    ACT -- "no: that's his answer" --> OUTCOME
     OUTCOME --> DET
     OUTCOME --> JDG
-    Q -. "expectations" .-> DET
+    Q -. "what a right answer must do" .-> DET
     DET --> MERGE
     JDG --> MERGE
 
@@ -151,66 +180,93 @@ flowchart TD
     classDef step fill:#fff4e0,stroke:#b07a1f,color:#1a1a1a
     classDef paid fill:#fde8e8,stroke:#b03a3a,color:#1a1a1a
     classDef output fill:#e6f4ea,stroke:#3a7d4a,color:#1a1a1a
-    class Q,REC,KIT input
-    class BUILD,TOOLS,RUN,LIMIT,DET step
+    class Q,STAGE,REC input
+    class BUILD,ACT,RUN,LIMIT,DET step
     class CALL,JDG paid
     class OUTCOME,MERGE output
 ```
 
-The expectations come from the case, not from what the model did. If they were inferred, any choice
-the model made would look correct.
+What a right answer must do is written in the test before the AI replies. If it were worked out
+afterwards from what the AI did, any reply would look correct.
+
+<details>
+<summary><b>For developers</b></summary>
+
+| Step | Where it lives |
+| --- | --- |
+| Question + expectations | `cases/cook-question.yaml`: `expect_patch`, `expect_pantry`, `expect_rethink`, `status` |
+| Instructions + allowed actions | `buildCookQuestionPrompt` in `app/_shared/prompt/john.ts`; `cookToolsFor(status)` in `app/cook-question/tools.ts` |
+| The reply | `messages.create()` with `tool_choice: auto`, in `providers/cook-question.ts` |
+| The three actions | tools `patch_recipe` (validated and applied in memory), `update_pantry`, `suggest_rethink` (validated only); no database is touched |
+| The 8 checks | `answered`, `patched_when_needed`, `patch_valid`, `patch_applied`, `rethink_when_needed`, `pantry_when_told`, `no_restating`, `turn_efficiency`, in `graders/cook-answer.ts` |
+| The 3 judge questions | `COOK_RUBRIC` in `graders/judge.ts`: `answers_it`, `correct`, `spoken` |
+
+</details>
 
 ---
 
-## 4. How a cell becomes one score
+## 4. How the marks become one result
 
-`asserts/shared.ts`. The same for both suites, which is why every grader returns the same
-`MetricResult` shape.
+Both kinds of test end the same way.
 
 ```mermaid
 flowchart LR
-    PF{"Did the provider<br/>fail?"}
-    ZERO["score 0, fail<br/>reason = the error"]
-    M1["Deterministic metrics<br/>each: pass, score 0–1, reason"]
-    M2["Judge metrics<br/>each: pass, score 0–1, reason"]
-    JV["judge_verdict<br/>fails if the judge returned<br/>nothing that parsed"]
-    TGR["toGradingResult"]
-    PASS["<b>pass</b> = every metric passed"]
-    SCORE["<b>score</b> = mean of all metrics<br/><i>ranks the near misses</i>"]
-    NAMED["<b>namedScores</b> = one dashboard<br/>column per metric"]
-    REASON["<b>reason</b> = which failed and why<br/>+ the judge's cost"]
+    BROKE{"Did the AI fail<br/>to answer at all?"}
+    ZERO["❌ <b>Fail, mark 0</b><br/>with the reason"]
+    CHECKS["📏 <b>Checklist marks</b><br/>each one: pass or fail,<br/>and a mark out of 1"]
+    JUDGEM["🧑‍⚖️ <b>Judge marks</b><br/>each one: pass or fail,<br/>and a mark out of 1"]
+    SILENT["⚠️ <b>Did the judge actually answer?</b><br/>if not, that counts as a fail,<br/>never as a quiet pass"]
+    ALL["🔗 <b>Put it all together</b>"]
+    PASS["✅ <b>Pass</b> only if every single check passed"]
+    SCORE["🔢 <b>Average mark</b><br/>so a near miss and a disaster<br/>don't look the same"]
+    COLS["📊 <b>One scorecard column per check</b><br/>so you can see exactly what went wrong"]
+    WHY["💬 <b>Why it failed</b>, in words,<br/>plus what the judge cost"]
 
-    PF -- yes --> ZERO
-    PF -- no --> M1
-    PF -- no --> M2
-    M2 --> JV
-    M1 --> TGR
-    M2 --> TGR
-    JV --> TGR
-    TGR --> PASS
-    TGR --> SCORE
-    TGR --> NAMED
-    TGR --> REASON
+    BROKE -- yes --> ZERO
+    BROKE -- no --> CHECKS
+    BROKE -- no --> JUDGEM
+    JUDGEM --> SILENT
+    CHECKS --> ALL
+    JUDGEM --> ALL
+    SILENT --> ALL
+    ALL --> PASS
+    ALL --> SCORE
+    ALL --> COLS
+    ALL --> WHY
 
     classDef step fill:#fff4e0,stroke:#b07a1f,color:#1a1a1a
     classDef output fill:#e6f4ea,stroke:#3a7d4a,color:#1a1a1a
     classDef warn fill:#fde8e8,stroke:#b03a3a,color:#1a1a1a
-    class PF,M1,M2,TGR step
-    class PASS,SCORE,NAMED,REASON output
-    class ZERO,JV warn
+    class BROKE,CHECKS,JUDGEM,ALL step
+    class PASS,SCORE,COLS,WHY output
+    class ZERO,SILENT warn
 ```
 
-A cell passes only if **every** metric passes: a recipe that needs an oven the cook doesn't own is
-unusable whatever the judge thinks, and a recipe the judge finds bad is unusable however tidy its
-structure. The mean score is there so a near miss and a disaster still read differently.
+Why every check must pass: a recipe that needs an oven you don't own is useless however good the
+judge thinks it is, and a recipe the judge finds bad is useless however tidy it looks.
+
+Why the judge's silence counts as a failure: on the very first run, the judge ran out of room to
+think and returned nothing. Without this rule, those tests would have looked like clean passes.
+
+<details>
+<summary><b>For developers</b></summary>
+
+| Step | Where it lives |
+| --- | --- |
+| Combining | `toGradingResult` in `asserts/shared.ts`; every grader returns the same `MetricResult` shape |
+| Judge health check | the `judge_verdict` metric |
+| Pass / score / columns / reason | promptfoo's `pass`, `score` (mean), `namedScores`, `reason` |
+
+</details>
 
 ---
 
-## What the diagrams leave out on purpose
+## What these pictures leave out on purpose
 
-- **Canonical ingredient resolution.** The canonical list lives in the database seed, so in an eval
-  run every line resolves to nothing. That is the same for every arm, so comparisons hold, but the
-  pantry check isn't measured. (`RESOLVES_AGAINST_CANONICAL` in `fixtures/kitchen.ts`.)
-- **Prompt caching.** Every cell starts cold, so the cost column is the uncached worst case.
-- **The spend ledger.** Eval calls don't go through `recordModelCall`, so they don't count against
-  any cook's cap and don't appear on the spend dashboard.
+- **Matching ingredients to the app's master ingredient list.** That list lives in the app's
+  database, which the test bench doesn't connect to. Every AI is affected the same way, so the
+  comparison is still fair, but this part isn't measured.
+- **Savings from caching.** Every test starts from scratch, so the costs shown are the worst case.
+  Real use costs less.
+- **The app's spending limits.** Test runs don't count against any cook's monthly limit and don't
+  show up on the app's spending dashboard.
