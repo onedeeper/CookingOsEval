@@ -27,7 +27,7 @@ flowchart TD
     F["🧑‍⚖️ <b>Expert marking</b><br/>The best AI available, marking like a head chef.<br/><i>Is it actually good food? ✓<br/>Is “30 minutes” really 30 minutes? ✗</i>"]
 
     G["📊 <b>A scorecard</b><br/>For each AI: how many tests it passed,<br/>its average mark, what it cost, how long it took"]
-    H["✅ <b>A decision backed by evidence</b><br/><i>Real example: the premium model<br/>scored 0.91 against 0.86, so the app<br/>switched to it for writing recipes</i>"]
+    H["✅ <b>A decision backed by evidence</b><br/><i>which AI the app should use, and whether<br/>the extra cost is worth it</i>"]
 
     A --> C
     B --> C
@@ -95,9 +95,9 @@ a computer can spot with certainty:
 - A reply that should have changed the recipe but didn't, or tried a change that isn't valid
 
 **Expert marking** (the AI judge) catches what only judgement can see. Is this actually good food? Does the one
-cooking technique it teaches really teach anything? Is "30 minutes" honest? In the first real
-run, the judge caught a recipe that claimed 30 minutes but really took 40: the rice could not
-start until after a 15-minute salting rest. No rule checker would have spotted that.
+cooking technique it teaches really teach anything? Is "30 minutes" honest? In an early
+run, the judge caught a recipe that claimed 30 minutes but could not be done in that time once
+its salting step was counted. No rule checker would have spotted that.
 
 A result **passes only if every check passes**. A recipe that needs an oven you don't own is
 useless however good the judge thinks it is. Alongside pass or fail there is an average score, so
@@ -107,15 +107,18 @@ a near miss and a disaster still look different.
 
 ## What it found
 
-The harness has already changed the product:
+So far the harness has only been run at small scale: a handful of test cases, each answered
+once. That is enough to surface problems, but not to put a reliable number on how much better
+one model is than another. That needs the full set of tests, each repeated several times, and
+it hasn't been run yet. What the early runs did surface:
 
-- **It moved recipe writing to a more capable model.** The premium model (Claude Opus) scored
-  0.911 on average against 0.858 for the standard one (Claude Sonnet). The gap was not cosmetic.
-  The standard model ignored "use what I already have", and it promised 20 minutes for a meal
-  that its own timers added up to 31.
-- **It caught John lecturing.** Mid-cook answers came back as long, formatted essays of 157 to
-  169 words, read by someone with their hands full. After a fix to his instructions, the pass rate
-  went from **1 in 6 to 4 in 6**.
+- **The standard model ignored part of a request.** Asked to "use what I already have", it
+  planned a meal around ingredients the cook would have to go out and buy. The premium model
+  didn't. The app now uses the premium model for writing recipes, a call based on these early
+  signals and still to be confirmed by a full run.
+- **John was lecturing.** Mid-cook answers came back as long, formatted lists, which is no use to
+  someone standing at the hob with their hands full. His instructions were changed, and the
+  answers got shorter and passed more checks.
 - **It caught a bug in the app itself.** One check was wrongly rejecting normal prep items like
   "Kettle" and "Spice mix". That same check was guarding the live app, where it would have refused
   a cook's legitimate edits. The test bench found it before any cook did.

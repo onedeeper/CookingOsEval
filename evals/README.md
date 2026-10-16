@@ -93,8 +93,8 @@ should have, did the patch validate, did it match anything, did it burn all four
 
 **By a judge** (`graders/judge.ts`), which costs money and catches what structure cannot — whether
 the food is actually good, whether the one technique teaches anything, whether 30 minutes is honest.
-On the first real run it caught a recipe whose stated 30 minutes was really 40, because the rice did
-not start until after a 15-minute salt rest. No deterministic check can see that.
+In an early run it caught a recipe whose stated 30 minutes could not be met once its salting step
+was counted on the critical path. No deterministic check can see that.
 
 The judge is **Opus 5.5 at `xhigh`**, which is at least as capable as the best arm it grades. A
 judge weaker than the thing under test silently caps the sweep at the judge's own ceiling.
